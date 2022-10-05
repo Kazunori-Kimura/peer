@@ -1,0 +1,16 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "start": ""
+  },
+  "keywords": [],
+  "author": "Kazunori Kimura <kazunori.kimura.js@gmail.com>",
+  "license": "ISC",
+  "private": true,
+  "dependencies": {
+    "peer": "^0.6.1"
+  }
+}
