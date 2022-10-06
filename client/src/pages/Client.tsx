@@ -11,7 +11,11 @@ const ClientPage: React.FC = () => {
 
     useEffect(() => {
         if (typeof sourceId === 'undefined') {
-            const peerId = uuid();
+            let peerId = localStorage.getItem('peer-id');
+            if (typeof peerId !== 'string') {
+                peerId = uuid();
+                localStorage.setItem('peer-id', peerId);
+            }
             setSourceId(peerId);
         }
     }, [sourceId]);

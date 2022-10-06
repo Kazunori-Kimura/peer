@@ -1,6 +1,7 @@
-import { Stack, Typography } from '@mui/material';
-import Peer, { DataConnection } from 'peerjs';
-import { useEffect, useRef } from 'react';
+import { Button, Stack, Typography } from '@mui/material';
+import Peer, { DataConnection, MediaConnection } from 'peerjs';
+import { useCallback, useRef, useState } from 'react';
+import { MdLink, MdLinkOff } from 'react-icons/md';
 import { getUserMediaAsync, peerOptions, setMediaStream } from '../lib/peer';
 
 interface Props {
@@ -30,7 +31,11 @@ function connect(peer: Peer, destinationId: string): Promise<DataConnection> {
     });
 }
 
-function call(peer: Peer, destinationId: string, stream: MediaStream): Promise<MediaStream> {
+function call(
+    peer: Peer,
+    destinationId: string,
+    stream: MediaStream
+): Promise<[MediaConnection, MediaStream]> {
     return new Promise((resolve) => {
         // 相手に発信する
         const call = peer.call(destinationId, stream);
@@ -38,7 +43,7 @@ function call(peer: Peer, destinationId: string, stream: MediaStream): Promise<M
         // 返答
         call.on('stream', (remoteStream) => {
             console.log(`stream: ${destinationId} ->`);
-            resolve(remoteStream);
+            resolve([call, remoteStream]);
         });
     });
 }
@@ -48,7 +53,7 @@ async function connectPeer(
     destinationId: string,
     sourceVideo: HTMLVideoElement,
     destVideo: HTMLVideoElement
-) {
+): Promise<[Peer, DataConnection, MediaConnection]> {
     // peer client を作成して open する
     const peer = await open(sourceId);
 
@@ -57,36 +62,97 @@ async function connectPeer(
     setMediaStream(sourceVideo, stream, true);
 
     // 相手に接続する
-    await connect(peer, destinationId);
+    const dc = await connect(peer, destinationId);
 
     // 相手に発信する
-    const remoteStream = await call(peer, destinationId, stream);
+    const [mc, remoteStream] = await call(peer, destinationId, stream);
     // 相手のカメラ画像を video に表示
     setMediaStream(destVideo, remoteStream);
+
+    return [peer, dc, mc];
 }
 
 const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
     const sourceVideo = useRef<HTMLVideoElement>(null);
     const destVideo = useRef<HTMLVideoElement>(null);
-    const initialized = useRef(false);
+    const peer = useRef<Peer>();
+    const mediaConn = useRef<MediaConnection>();
+    const dataConn = useRef<DataConnection>();
 
-    useEffect(() => {
-        if (initialized.current) {
-            return;
-        }
-        initialized.current = true;
+    const [connected, setConnected] = useState(false);
 
+    const handleCall = useCallback(async () => {
         if (sourceVideo.current && destVideo.current) {
+            try {
+                // 一度 video の play を呼び出しておく
+                sourceVideo.current.play().catch(() => {});
+                sourceVideo.current.pause();
+                destVideo.current.play().catch(() => {});
+                destVideo.current.pause();
+            } catch {
+                // 何もしない
+            }
+
             // 呼び出し
-            connectPeer(sourceId, destinationId, sourceVideo.current, destVideo.current);
+            [peer.current, dataConn.current, mediaConn.current] = await connectPeer(
+                sourceId,
+                destinationId,
+                sourceVideo.current,
+                destVideo.current
+            );
+            setConnected(true);
         }
     }, [destinationId, sourceId]);
 
+    const handleDisconnect = useCallback(() => {
+        if (peer.current && dataConn.current && mediaConn.current) {
+            dataConn.current.send('disconnect');
+
+            mediaConn.current.close();
+            mediaConn.current = undefined;
+            dataConn.current.close();
+            dataConn.current = undefined;
+            peer.current.disconnect();
+            peer.current = undefined;
+        }
+        setConnected(false);
+    }, []);
+
     return (
-        <Stack direction="column">
-            <Typography component="h2" variant="h6">
-                通話画面
-            </Typography>
+        <Stack direction="column" sx={{ pt: 1 }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+                <Typography
+                    variant="body1"
+                    sx={{
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        width: 200,
+                        textOverflow: 'ellipsis',
+                    }}
+                >
+                    {`ID: ${sourceId}`}
+                </Typography>
+                <Button
+                    startIcon={<MdLink />}
+                    size="large"
+                    variant="contained"
+                    color="primary"
+                    disabled={connected}
+                    onClick={handleCall}
+                >
+                    接続
+                </Button>
+                <Button
+                    startIcon={<MdLinkOff />}
+                    size="large"
+                    variant="contained"
+                    color="error"
+                    disabled={!connected}
+                    onClick={handleDisconnect}
+                >
+                    切断
+                </Button>
+            </Stack>
             {/* destination */}
             <video ref={destVideo} width={400} height={400} />
             {/* source */}
