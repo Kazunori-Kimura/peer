@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import Layout from '../components/Layout';
+import PeerClient, { PeerClientProps } from '../components/PeerClient';
 import { getUserMediaAsync, peerOptions, setMediaStream } from '../lib/peer';
 
 const host = process.env.REACT_APP_URL || 'http://localhost:3000';
@@ -12,6 +13,7 @@ const ServerPage: React.FC = () => {
     const [connected, setConnected] = useState(false);
     const [ownId, setOwnId] = useState('empty');
     const [qr, setQr] = useState<string>();
+    const [clients, setClients] = useState<Record<string, PeerClientProps>>({});
 
     const sourceRef = useRef<HTMLVideoElement>(null);
     const destRef = useRef<HTMLVideoElement>(null);
@@ -32,6 +34,15 @@ const ServerPage: React.FC = () => {
             console.log('connection: ', conn.peer);
             conn.on('data', (data) => {
                 console.log('message: ', data);
+
+                if (data === 'disconnect') {
+                    // 切断処理
+                    setClients((state) => {
+                        const newState = { ...state };
+                        delete newState[conn.peer];
+                        return newState;
+                    });
+                }
             });
         });
 
@@ -42,6 +53,17 @@ const ServerPage: React.FC = () => {
             // 応答する
             call.answer(stream);
 
+            setClients((state) => {
+                const newState = {
+                    ...state,
+                    [call.peer]: {
+                        peerId: call.peer,
+                        connection: call,
+                    },
+                };
+                return newState;
+            });
+
             // 自分の映像を表示
             if (sourceRef.current) {
                 setMediaStream(sourceRef.current, stream, true);
@@ -49,9 +71,32 @@ const ServerPage: React.FC = () => {
 
             // クライアントからの映像
             call.on('stream', (remoteStream) => {
+                console.log(`stream: ${call.peer}`);
+                setClients((state) => {
+                    const newState = {
+                        ...state,
+                        [call.peer]: {
+                            peerId: call.peer,
+                            connection: call,
+                            stream: remoteStream,
+                        },
+                    };
+                    return newState;
+                });
+
                 if (destRef.current) {
                     setMediaStream(destRef.current, remoteStream);
                 }
+            });
+
+            // 切断処理
+            call.on('close', () => {
+                console.log(`close: ${call.peer}`);
+                setClients((state) => {
+                    const newState = { ...state };
+                    delete newState[call.peer];
+                    return newState;
+                });
             });
         });
 
@@ -82,7 +127,11 @@ const ServerPage: React.FC = () => {
                             {/* 自身の映像 */}
                             <video ref={sourceRef} width={400} height={400} />
                             {/* 相手の映像 */}
-                            <video ref={destRef} width={200} height={200} />
+                            <Stack direction="row" spacing={1}>
+                                {Object.values(clients).map((client) => (
+                                    <PeerClient key={client.peerId} {...client} />
+                                ))}
+                            </Stack>
                         </>
                     ) : (
                         <Typography variant="body2">接続中...</Typography>
