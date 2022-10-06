@@ -13,17 +13,16 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  REACT_APP_PEER_HOST: ${{ secrets.REACT_APP_PEER_HOST }}
+  REACT_APP_PEER_PATH: ${{ secrets.REACT_APP_PEER_PATH }}
+  REACT_APP_URL: ${{ secrets.CDN_ENDPOINT }}
+
 jobs:
   build_client:
-    name: Build and Deploy Client
     runs-on: ubuntu-latest
 
     steps:
-      - env:
-          REACT_APP_PEER_HOST: ${{ secrets.REACT_APP_PEER_HOST }}
-          REACT_APP_PEER_PATH: ${{ secrets.REACT_APP_PEER_PATH }}
-          REACT_APP_URL: ${{ secrets.CDN_ENDPOINT }}
-
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
@@ -34,6 +33,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
+          cache: npm
 
       # Client
       - name: build React
