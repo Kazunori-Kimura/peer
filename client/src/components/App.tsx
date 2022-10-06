@@ -6,7 +6,7 @@ const App: React.FC = () => {
     return (
         <Routes>
             <Route path="/" element={<ServerPage />} />
-            <Route path="/v/:code" element={<ClientPage />} />
+            <Route path="/c/:code" element={<ClientPage />} />
         </Routes>
     );
 };
