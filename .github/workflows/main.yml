@@ -22,6 +22,7 @@ jobs:
       - env:
           REACT_APP_PEER_HOST: ${{ secrets.REACT_APP_PEER_HOST }}
           REACT_APP_PEER_PATH: ${{ secrets.REACT_APP_PEER_PATH }}
+          REACT_APP_URL: ${{ secrets.CDN_ENDPOINT }}
 
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
