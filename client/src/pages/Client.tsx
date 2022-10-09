@@ -22,7 +22,7 @@ const ClientPage: React.FC = () => {
 
     return (
         <Layout>
-            <Container>
+            <Container maxWidth="lg">
                 {sourceId && desticationId ? (
                     <PeerComponent sourceId={sourceId} destinationId={desticationId} />
                 ) : (
