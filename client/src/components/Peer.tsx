@@ -1,8 +1,8 @@
-import { Button, Stack, Typography } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import Peer, { DataConnection, MediaConnection } from 'peerjs';
 import { useCallback, useRef, useState } from 'react';
 import { MdLink, MdLinkOff } from 'react-icons/md';
-import { getUserMediaAsync, peerOptions, setMediaStream } from '../lib/peer';
+import { peerOptions, setMediaStream } from '../lib/peer';
 
 interface Props {
     sourceId: string;
@@ -51,19 +51,17 @@ function call(
 async function connectPeer(
     sourceId: string,
     destinationId: string,
-    sourceVideo: HTMLVideoElement,
     destVideo: HTMLVideoElement
 ): Promise<[Peer, DataConnection, MediaConnection]> {
     // peer client を作成して open する
     const peer = await open(sourceId);
 
-    const stream = await getUserMediaAsync();
-    // 自分のカメラ画像を video に表示
-    setMediaStream(sourceVideo, stream, true);
-
     // 相手に接続する
     const dc = await connect(peer, destinationId);
 
+    // ダミーのstreamを生成する
+    const canvas = document.createElement('canvas');
+    const stream = canvas.captureStream(0);
     // 相手に発信する
     const [mc, remoteStream] = await call(peer, destinationId, stream);
     // 相手のカメラ画像を video に表示
@@ -73,7 +71,6 @@ async function connectPeer(
 }
 
 const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
-    const sourceVideo = useRef<HTMLVideoElement>(null);
     const destVideo = useRef<HTMLVideoElement>(null);
     const peer = useRef<Peer>();
     const mediaConn = useRef<MediaConnection>();
@@ -82,11 +79,9 @@ const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
     const [connected, setConnected] = useState(false);
 
     const handleCall = useCallback(async () => {
-        if (sourceVideo.current && destVideo.current) {
+        if (destVideo.current) {
             try {
                 // 一度 video の play を呼び出しておく
-                sourceVideo.current.play().catch(() => {});
-                sourceVideo.current.pause();
                 destVideo.current.play().catch(() => {});
                 destVideo.current.pause();
             } catch {
@@ -97,7 +92,6 @@ const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
             [peer.current, dataConn.current, mediaConn.current] = await connectPeer(
                 sourceId,
                 destinationId,
-                sourceVideo.current,
                 destVideo.current
             );
             setConnected(true);
@@ -120,7 +114,7 @@ const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
 
     return (
         <Stack direction="column" sx={{ pt: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                 <Typography
                     variant="body1"
                     sx={{
@@ -154,9 +148,17 @@ const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
                 </Button>
             </Stack>
             {/* destination */}
-            <video ref={destVideo} width={400} height={400} />
-            {/* source */}
-            <video ref={sourceVideo} width={200} height={200} />
+            <Box
+                sx={(theme) => ({
+                    flex: 1,
+                    width: '100%',
+                    [theme.breakpoints.up('lg')]: {
+                        width: theme.breakpoints.values.lg,
+                    },
+                })}
+            >
+                <video ref={destVideo} width="100%" height="100%" />
+            </Box>
         </Stack>
     );
 };
