@@ -4,18 +4,16 @@ import QRCode from 'qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MdPhotoCameraFront } from 'react-icons/md';
 import { v4 as uuid } from 'uuid';
-import ClientList from '../components/ClientList';
-import { ClientListItemProps } from '../components/ClientList/ClientListItem';
 import Layout from '../components/Layout';
 import { getUserMediaAsync, peerOptions, setMediaStream } from '../lib/peer';
 
 const host = process.env.REACT_APP_URL || 'http://localhost:3000';
+const ServerPeerIdKey = 'peer-server-key';
 
 const ServerPage: React.FC = () => {
     const [connected, setConnected] = useState(false);
     const [ownId, setOwnId] = useState('');
     const [qr, setQr] = useState<string>();
-    const [clients, setClients] = useState<ClientListItemProps[]>([]);
 
     const sourceRef = useRef<HTMLVideoElement>(null);
 
@@ -40,9 +38,13 @@ const ServerPage: React.FC = () => {
         }
 
         // PeerServer への接続
-        const id = uuid();
-        const peer = new Peer(id, peerOptions);
-        setOwnId(id);
+        let peerId = localStorage.getItem(ServerPeerIdKey);
+        if (typeof peerId !== 'string') {
+            peerId = uuid();
+            localStorage.setItem(ServerPeerIdKey, peerId);
+        }
+        const peer = new Peer(peerId, peerOptions);
+        setOwnId(peerId);
         setConnected(true);
 
         // クライアント からの接続
@@ -50,14 +52,6 @@ const ServerPage: React.FC = () => {
             console.log('connection: ', conn.peer);
             conn.on('data', (data) => {
                 console.log('message: ', data);
-
-                if (data === 'disconnect') {
-                    // 切断処理
-                    setClients((state) => {
-                        const newState = [...state].filter((client) => client.peerId !== conn.peer);
-                        return newState;
-                    });
-                }
             });
         });
 
@@ -66,23 +60,6 @@ const ServerPage: React.FC = () => {
             console.log('called: ', call.peer);
             // 応答する
             call.answer(stream);
-
-            // クライアントを追加
-            setClients((state) => {
-                const client: ClientListItemProps = { peerId: call.peer, connection: call };
-                const newState = [...state, client];
-                return newState;
-            });
-
-            // 切断処理
-            call.on('close', () => {
-                console.log(`close: ${call.peer}`);
-                // クライアントを削除
-                setClients((state) => {
-                    const newState = [...state].filter((client) => client.peerId !== call.peer);
-                    return newState;
-                });
-            });
         });
 
         peer.on('open', (id) => {
@@ -124,8 +101,6 @@ const ServerPage: React.FC = () => {
                         {/* QRコード */}
                         {qr && <img src={qr} alt="QRコード" width={200} height={200} />}
                         {ownId && <Typography variant="body2">{`${host}/#/c/${ownId}`}</Typography>}
-                        {/* 接続中のクライアント */}
-                        {clients.length > 0 && <ClientList clients={clients} />}
                     </Stack>
                 </Stack>
             </Container>

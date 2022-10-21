@@ -113,41 +113,52 @@ const PeerComponent: React.FC<Props> = ({ sourceId, destinationId }) => {
     }, []);
 
     return (
-        <Stack direction="column" sx={{ pt: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack direction="column" sx={{ pt: 1 }} spacing={2}>
+            <Stack
+                direction="column"
+                spacing={1}
+                sx={{
+                    width: (theme) => theme.breakpoints.values.sm,
+                    margin: '0 auto',
+                }}
+            >
                 <Typography
                     variant="body1"
                     sx={{
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
-                        width: 200,
+                        width: (theme) => theme.breakpoints.values.sm,
                         textOverflow: 'ellipsis',
                     }}
                 >
                     {`ID: ${sourceId}`}
                 </Typography>
-                <Button
-                    startIcon={<MdLink />}
-                    size="large"
-                    variant="contained"
-                    color="primary"
-                    disabled={connected}
-                    onClick={handleCall}
-                >
-                    接続
-                </Button>
-                <Button
-                    startIcon={<MdLinkOff />}
-                    size="large"
-                    variant="contained"
-                    color="error"
-                    disabled={!connected}
-                    onClick={handleDisconnect}
-                >
-                    切断
-                </Button>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <Button
+                        startIcon={<MdLink />}
+                        size="large"
+                        variant="contained"
+                        color="primary"
+                        disabled={connected}
+                        sx={{ flex: 1 }}
+                        onClick={handleCall}
+                    >
+                        接続
+                    </Button>
+                    <Button
+                        startIcon={<MdLinkOff />}
+                        size="large"
+                        variant="contained"
+                        color="error"
+                        disabled={!connected}
+                        sx={{ flex: 1 }}
+                        onClick={handleDisconnect}
+                    >
+                        切断
+                    </Button>
+                </Stack>
             </Stack>
-            {/* destination */}
+            {/* destination video */}
             <Box
                 sx={(theme) => ({
                     flex: 1,
