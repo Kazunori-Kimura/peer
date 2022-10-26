@@ -1,4 +1,5 @@
 import { Box, Button, Container, Stack, Typography } from '@mui/material';
+import { detect } from 'detect-browser';
 import { DataConnection, MediaConnection, Peer } from 'peerjs';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,12 +11,24 @@ import { getUserMediaAsync, peerOptions, setMediaStream } from '../lib/peer';
 const host = process.env.REACT_APP_URL || 'http://localhost:3000';
 const ServerPeerIdKey = 'peer-server-key';
 
+// 1h ごとに画面を再読み込みする
+const reloadInterval = 1000 * 60 * 60;
+
+const browser = detect();
+const isMobile = 'ontouchend' in document;
+
+let os = browser?.os;
+if (os?.includes('Mac') && isMobile) {
+    os = 'iOS';
+}
+
 const ServerPage: React.FC = () => {
     const [connected, setConnected] = useState(false);
     const [ownId, setOwnId] = useState('');
     const [qr, setQr] = useState<string>();
 
     const sourceRef = useRef<HTMLVideoElement>(null);
+    const called = useRef<boolean>(false);
 
     // iOS 対応
     // iOS ではユーザーの操作をトリガーにしないと
@@ -78,6 +91,25 @@ const ServerPage: React.FC = () => {
             QRCode.toDataURL(url).then((data) => setQr(data));
         }
     }, [ownId]);
+
+    // 読み込み処理
+    useEffect(() => {
+        if (os !== 'iOS' && !connected) {
+            if (!called.current) {
+                handleStart();
+                called.current = true;
+            }
+        }
+
+        // 1h で再読み込みする
+        const timer = setTimeout(() => {
+            window.location.reload();
+        }, reloadInterval);
+
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [connected, handleStart]);
 
     return (
         <Layout>
